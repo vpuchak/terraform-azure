@@ -54,4 +54,10 @@ resource "azurerm_virtual_machine" "vm" {
   os_profile_linux_config {
     disable_password_authentication = false
   }
+
+  lifecycle {
+    ignore_changes = [
+      os_profile_linux_config, os_profile
+    ]
+  }
 }
