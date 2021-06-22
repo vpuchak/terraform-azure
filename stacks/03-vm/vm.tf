@@ -2,8 +2,8 @@
 resource "azurerm_public_ip" "publicip" {
   count               = var.create_vm ? 1 : 0
   name                = "${var.env}-public-ip"
-  location            = var.region
-  resource_group_name = data.terraform_remote_state.rg.resource_group_name
+  location            = var.location
+  resource_group_name = data.terraform_remote_state.rg.outputs.resource_group_name
   allocation_method   = "Static"
 }
 
@@ -11,14 +11,14 @@ resource "azurerm_public_ip" "publicip" {
 resource "azurerm_network_interface" "nic" {
   count               = var.create_vm ? 1 : 0
   name                = "${var.env}-nic"
-  location            = var.region
-  resource_group_name = data.terraform_remote_state.rg.resource_group_name
+  location            = var.location
+  resource_group_name = data.terraform_remote_state.rg.outputs.resource_group_name
 
   ip_configuration {
     name                          = "${var.env}-nic-config"
-    subnet_id                     = data.terraform_remote_state.network.vnet_subnets[0]
+    subnet_id                     = data.terraform_remote_state.network.outputs.vnet_subnets[0]
     private_ip_address_allocation = "dynamic"
-    public_ip_address_id          = azurerm_public_ip.publicip.id
+    public_ip_address_id          = azurerm_public_ip.publicip[count.index].id
   }
 }
 
@@ -26,9 +26,9 @@ resource "azurerm_network_interface" "nic" {
 resource "azurerm_virtual_machine" "vm" {
   count                 = var.create_vm ? 1 : 0
   name                  = "${var.env}-vm"
-  location              = var.region
-  resource_group_name   = data.terraform_remote_state.rg.resource_group_name
-  network_interface_ids = [azurerm_network_interface.nic.id]
+  location              = var.location
+  resource_group_name   = data.terraform_remote_state.rg.outputs.resource_group_name
+  network_interface_ids = [azurerm_network_interface.nic[count.index].id]
   vm_size               = var.vm_size
 
   storage_os_disk {

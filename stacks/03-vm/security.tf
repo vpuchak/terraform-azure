@@ -2,8 +2,8 @@
 resource "azurerm_network_security_group" "nsg" {
   count               = var.create_vm ? 1 : 0
   name                = "${var.env}-nsg"
-  location            = var.region
-  resource_group_name = data.terraform_remote_state.rg.resource_group_name
+  location            = var.location
+  resource_group_name = data.terraform_remote_state.rg.outputs.resource_group_name
 
   security_rule {
     name                       = "SSH"

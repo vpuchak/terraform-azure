@@ -3,9 +3,9 @@ variable "env" {
   default     = ""
 }
 
-variable "region" {
-  description = "Azure region"
-  default     = "westus2"
+variable "location" {
+  description = "Azure location"
+  default     = "eastus"
 }
 
 variable "create_vm" {

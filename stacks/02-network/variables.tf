@@ -1,11 +1,12 @@
 variable "env" {
   description = "Environment name"
+  type        = string
   default     = ""
 }
 
-variable "region" {
-  description = "Azure region"
-  default     = "westus2"
+variable "location" {
+  description = "Azure location"
+  default     = "eastus"
 }
 
 variable "address_spaces" {
@@ -23,7 +24,7 @@ variable "dns_servers" {
 
 variable "subnets" {
   description = "The address prefix to use for the subnet."
-  type        = list(map(string))
+  type        = any
   default     = []
 }
 
