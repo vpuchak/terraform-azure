@@ -32,7 +32,7 @@ resource "azurerm_virtual_machine" "vm" {
   vm_size               = var.vm_size
 
   storage_os_disk {
-    name              = "myOsDisk"
+    name              = "${var.env}-vm-disc"
     caching           = "ReadWrite"
     create_option     = "FromImage"
     managed_disk_type = "Premium_LRS"
@@ -52,12 +52,74 @@ resource "azurerm_virtual_machine" "vm" {
   }
 
   os_profile_linux_config {
-    disable_password_authentication = false
+    disable_password_authentication = var.enable_ssh_key
+
+    dynamic ssh_keys {
+      for_each = var.enable_ssh_key ? local.ssh_keys : []
+      content {
+        path     = "/home/${data.azurerm_key_vault_secret.admin_username.value}/.ssh/authorized_keys"
+        key_data = file(ssh_keys.value)
+      }
+    }
+
+    dynamic ssh_keys {
+      for_each = var.enable_ssh_key ? var.ssh_key_values : []
+      content {
+        path     = "/home/${data.azurerm_key_vault_secret.admin_username.value}/.ssh/authorized_keys"
+        key_data = ssh_keys.value
+      }
+    }
   }
 
   lifecycle {
     ignore_changes = [
       os_profile_linux_config, os_profile
     ]
+    create_before_destroy = true
   }
+
+  depends_on = [
+    azurerm_network_interface.nic,
+  ]
+}
+
+resource "null_resource" "bastion_provisioner" {
+  count                 = var.create_vm ? 1 : 0
+
+  triggers = {
+    vm_ids = join(",", azurerm_virtual_machine.vm.*.id)
+  }
+
+  depends_on = [azurerm_public_ip.publicip, azurerm_virtual_machine.vm]
+
+  connection {
+    type     = "ssh"
+    host     = azurerm_public_ip.publicip[count.index].ip_address
+    user     = data.azurerm_key_vault_secret.admin_username.value
+    password = data.azurerm_key_vault_secret.admin_password.value
+  }
+
+  provisioner "file" {
+    content     = "env name: ${terraform.workspace}"
+    destination = "/tmp/file.log"
+  }
+
+  provisioner "file" {
+    content     = templatefile("${path.module}/templates/backends.tpl", { port = 8080, ip_addrs = ["10.0.0.1", "10.0.0.2"] })
+    destination = "/tmp/file2.log"
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/files/id_rsa.pub"
+    destination = "/tmp/id_rsa.pub"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "cat /tmp/file.log",
+      "cat /tmp/file2.log",
+      "cat /tmp/id_rsa.pub"
+    ]
+  }
+
 }
